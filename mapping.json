@@ -1,0 +1,49 @@
+{
+  "age_group": {
+    "65+ Years": 1,
+    "55 - 64 Years": 2,
+    "45 - 54 Years": 3,
+    "18 - 34 Years": 4,
+    "35 - 44 Years": 5,
+    "Other": 6
+  },
+  "education": {
+    "College Graduate": 1,
+    "Some College": 2,
+    "12 Years": 3,
+    "Other": 4
+  },
+  "race": {
+    "White": 1,
+    "Black": 2,
+    "Hispanic": 3,
+    "Other": 4
+  },
+  "income_poverty": {
+    "<= $75,000, Above Poverty": 1,
+    "> $75,000": 2,
+    "Below Poverty": 3
+  },
+  "marital_status": {
+    "Married": 1,
+    "Not Married": 2
+  },
+  "rent_or_own": {
+    "Own": 1,
+    "Rent": 2
+  },
+  "sex": {
+    "Female": 1,
+    "Male": 2
+  },
+  "employment_status": {
+    "Not in Labor Force": 1,
+    "Employed": 2,
+    "Unemployed": 3
+  },
+  "census_msa": {
+    "MSA, Not Principle  City": 1,
+    "MSA, Principle City": 2,
+    "Non-MSA": 3
+  }
+}
