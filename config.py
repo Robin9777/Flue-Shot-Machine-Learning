@@ -9,10 +9,10 @@ SELECTED_FEATURES = ['h1n1_concern', 'h1n1_knowledge', 'behavioral_antiviral_med
        'opinion_seas_risk', 'opinion_seas_sick_from_vacc', 'age_group',
        'education', 'race', 'sex', 'income_poverty', 'marital_status',
        'rent_or_own', 'employment_status', 'census_msa', 'household_adults',
-       'household_children', 'h1n1_vaccine', 'seasonal_vaccine']
+       'household_children']
 
 
-TARGET = "h1n1_vaccine"
+TARGETS = ["h1n1_vaccine", "seasonal_vaccine"]
 
 MAPPING = {
   "age_group": {
