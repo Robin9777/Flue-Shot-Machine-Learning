@@ -189,20 +189,20 @@ class FlueShotModel():
             return roc_auc_score(self.y_test, y_pred_proba)
     
 
-    def fit_grid_search(self):
+    def fit_grid_search(self, label):
         grid_search = self._grid_search()
-        grid_search.fit(self.X_train, self.y_train)
+        grid_search.fit(self.X_train, self.y_train[label])
         return grid_search
     
     
-    def get_model(self):
-        gs = self.fit_grid_search()
+    def get_model(self, label):
+        gs = self.fit_grid_search(label)
         return gs.best_estimator_
     
 
-    def print_classification_report(self, set_="test"):
-        model = self.get_model()
-        if set_ is "train":
+    def print_classification_report(self, label, set_="test"):
+        model = self.get_model(label)
+        if set_ == "train":
             y_pred = model.predict(self.X_train)
         else:
             y_pred = model.predict(self.X_test)
@@ -211,15 +211,22 @@ class FlueShotModel():
         print(classification_report(self.y_test, y_pred))
 
 
-    def print_roc_auc_score(self, set_="test"):
-        model = self.get_model()
+    def print_roc_auc_score(self, label, set_="test"):
+        model = self.get_model(label)
         score = self._get_roc_auc_score(model, set_=set_)
         print(f"\nROC AUC Score for {set_} set: {score:.4f}")
 
 
     def prepare_submission(self, test_df:pd.DataFrame, output_file="submission.csv"):
-        model = self.get_model()
-        predictions = model.predict_proba(test_df)[:, 1]
-        pass
+        model_h1n1 = self.get_model("h1n1_vaccine")
+        model_seasonal = self.get_model("seasonal_vaccine")
+        predictions_h1n1 = model_h1n1.predict_proba(test_df)[:, 1]
+        predictions_seasonal = model_seasonal.predict_proba(test_df)[:, 1]
+        submission = pd.DataFrame(
+            index=test_df.index, columns=['h1n1_vaccine', 'seasonal_vaccine']
+        )
+        submission['h1n1_vaccine'] = predictions_h1n1
+        submission['seasonal_vaccine'] = predictions_seasonal
+        submission.to_csv(output_file, index_label='respondent_id')
 
 
