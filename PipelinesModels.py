@@ -3,18 +3,21 @@ from sklearn.tree import DecisionTreeClassifier
 import numpy as np
 import pandas as pd
 from sklearn.pipeline import Pipeline
-from sklearn.impute import KNNImputer, SimpleImputer
-from sklearn.preprocessing import OneHotEncoder, StandardScaler, OrdinalEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
 from sklearn.compose import ColumnTransformer
-import utilsfunc as uf
-from config import SELECTED_FEATURES, TARGETS, MAPPING, PARAMS_DT, PARAMS_RF
+from config import PARAMS_DT, PARAMS_RF
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.feature_selection import SelectKBest, chi2
 from sklearn.compose import make_column_selector
-import pickle
 from abc import ABC, abstractmethod
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, roc_auc_score
+import logging
+
+
+# logging configuration
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 
@@ -88,7 +91,7 @@ class DTPipeline(ModelPipeline):
         )
  
         return Pipeline([
-            ('drop_missing', uf.DropMissingTransformer(threshold=drop_missing_threshold)),
+            ('drop_missing', DropMissingTransformer(threshold=drop_missing_threshold)),
             ('column_transformer', column_transformer),
             ('selectkbest', SelectKBest(score_func=chi2)),
             ('dt', model)
@@ -130,7 +133,7 @@ class RFPipeline(ModelPipeline):
         )
 
         return Pipeline([
-            ('drop_missing', uf.DropMissingTransformer(threshold=drop_missing_threshold)),
+            ('drop_missing', DropMissingTransformer(threshold=drop_missing_threshold)),
             ('column_transformer', column_transformer),
             ('selectkbest', SelectKBest(score_func=chi2)),
             ('rf', model)
@@ -156,17 +159,24 @@ class FlueShotModel():
         self.df_y = df_y
         self.X_train, self.X_test, self.y_train, self.y_test = self._split_data()
 
+        # Caching
+        self._best_models = {}
+        self.grid_searchs = {}
+
 
     def _split_data(self, test_size=0.2, random_state=42):
         return train_test_split(self.df_x, self.df_y, test_size=test_size, random_state=random_state)
     
 
-    def _pipline_builder(self):
+    def _pipeline_builder(self):
         return self.pipeline_model.build_pipeline(self.df_x, drop_missing_threshold=self.drop_missing_threshold)
     
     def _grid_search(self, cv=5, scoring='roc_auc'):
 
-        pipeline = self._pipline_builder()
+        pipeline = self._pipeline_builder()
+
+        logging.info(f"Pipeline built with steps: {pipeline.named_steps.keys()}")
+
         if isinstance(pipeline.named_steps['rf'], RandomForestClassifier):
             param_grid = self.PARAMS_RF
         else:
@@ -180,23 +190,40 @@ class FlueShotModel():
             n_jobs=-1
         )
     
-    def _get_roc_auc_score(self, model, set_="test"):
+
+    def _get_roc_auc_score(self, model, label, set_="test"):
         if set_ == "train":
             y_pred_proba = model.predict_proba(self.X_train)[:, 1]
-            return roc_auc_score(self.y_train, y_pred_proba)
+            return roc_auc_score(self.y_train[label], y_pred_proba)
         else:
             y_pred_proba = model.predict_proba(self.X_test)[:, 1]
-            return roc_auc_score(self.y_test, y_pred_proba)
+            return roc_auc_score(self.y_test[label], y_pred_proba)
     
 
     def fit_grid_search(self, label):
+
+        # looking in cache
+        if label in self.grid_searchs:
+            logging.info(f"Grid search for label '{label}' found in cache.")
+            return self.grid_searchs[label]
+        # not found in cache, fit and store
+        logging.info(f"Fitting grid search for label '{label}'...")
         grid_search = self._grid_search()
         grid_search.fit(self.X_train, self.y_train[label])
+        self.grid_searchs[label] = grid_search
         return grid_search
     
     
     def get_model(self, label):
+
+        # looking in cache
+        if label in self._best_models:
+            logging.info(f"Best model for label '{label}' found in cache.")
+            return self._best_models[label]
+        # not found, fit and store
+        logging.info(f"Getting best model for label '{label}' by fitting grid search...")
         gs = self.fit_grid_search(label)
+        self._best_models[label] = gs.best_estimator_
         return gs.best_estimator_
     
 
@@ -208,12 +235,12 @@ class FlueShotModel():
             y_pred = model.predict(self.X_test)
 
         print(f"\nClassification Report for {set_} set")
-        print(classification_report(self.y_test, y_pred))
+        print(classification_report(self.y_test[label], y_pred))
 
 
     def print_roc_auc_score(self, label, set_="test"):
         model = self.get_model(label)
-        score = self._get_roc_auc_score(model, set_=set_)
+        score = self._get_roc_auc_score(model, label, set_=set_)
         print(f"\nROC AUC Score for {set_} set: {score:.4f}")
 
 
@@ -230,3 +257,17 @@ class FlueShotModel():
         submission.to_csv(output_file, index_label='respondent_id')
 
 
+
+
+
+if __name__ == "__main__":
+
+    df = pd.read_csv("training_set_features.csv", index_col="respondent_id")
+    results = pd.read_csv("training_set_labels.csv", index_col="respondent_id")
+
+    model_builder = FlueShotModel("random_forest", df, results)
+
+    df_test = pd.read_csv("test_set_features.csv", index_col="respondent_id")
+
+    model_builder.prepare_submission(df_test, output_file="submission.csv")
+    logging.info("Model obtained successfully.")
