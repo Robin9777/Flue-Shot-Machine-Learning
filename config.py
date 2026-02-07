@@ -63,3 +63,21 @@ MAPPING = {
     "Non-MSA": 3
   }
 }
+
+
+PARAMS_DT = {
+    'selectkbest__k': [5, 10, 15, 'all'],
+    'dt__criterion': ['gini', 'entropy'],
+    'dt__max_depth': [4, 5, 6],
+    'dt__min_samples_split': [2, 3, 4, 5],
+    'dt__min_samples_leaf': [3, 4, 5]
+}
+
+PARAMS_RF = {
+    'selectkbest__k': [10, 15, 20],
+    'rf__n_estimators': [100, 200], # tree number
+    'rf__max_depth': [5, 10, 15], # trees depth
+    'rf__min_samples_leaf': [2, 4, 10],
+    'rf__max_features': ['sqrt', 'log2'] # features number
+}
+
